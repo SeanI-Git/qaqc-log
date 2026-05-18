@@ -454,6 +454,8 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DRIVE_FILE_NAME = 'qaqc-log-data.json';
+const TOKEN_STORAGE_KEY = 'qaqc_gtoken';
+const TOKEN_EXPIRY_KEY = 'qaqc_gtoken_expiry';
 let CLIENT_ID = localStorage.getItem('qaqc_client_id') || '';
 let tokenClient = null;
 let accessToken = null;
@@ -461,6 +463,7 @@ let driveFileId = null;
 let useGoogle = false;
 let saveTimer = null;
 let syncTimer = null;
+let tokenRefreshTimer = null;
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 let db = { notes: [], todos: [], summaries: {}, lastSync: null };
@@ -473,12 +476,43 @@ function saveLocal() {
 }
 
 // ─── GOOGLE DRIVE ─────────────────────────────────────────────────────────────
+function storeToken(token) {
+  const expiry = Date.now() + 55 * 60 * 1000; // store for 55 min (token lasts 60)
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+}
+
+function loadStoredToken() {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const expiry = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0');
+  if (token && Date.now() < expiry) return token;
+  return null;
+}
+
+function clearStoredToken() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+function scheduleTokenRefresh() {
+  clearTimeout(tokenRefreshTimer);
+  // silently refresh token 5 minutes before expiry
+  tokenRefreshTimer = setTimeout(() => {
+    if (tokenClient) {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  }, 50 * 60 * 1000);
+}
+
 function initGoogleAuth() {
   const cid = document.getElementById('client-id-input').value.trim();
   if (!cid) { alert('Please paste your Google OAuth Client ID first.'); return; }
   CLIENT_ID = cid;
   localStorage.setItem('qaqc_client_id', cid);
+  loadGoogleScript(true);
+}
 
+function loadGoogleScript(promptUser) {
   const script = document.createElement('script');
   script.src = 'https://accounts.google.com/gsi/client';
   script.onload = () => {
@@ -486,15 +520,22 @@ function initGoogleAuth() {
       client_id: CLIENT_ID,
       scope: SCOPES,
       callback: async (resp) => {
-        if (resp.error) { showToast('Auth error: ' + resp.error); return; }
+        if (resp.error) {
+          clearStoredToken();
+          showToast('Auth error: ' + resp.error);
+          return;
+        }
         accessToken = resp.access_token;
+        storeToken(accessToken);
+        scheduleTokenRefresh();
         useGoogle = true;
         await loadFromDrive();
         launchApp('Google Drive');
         document.getElementById('topbar-user').textContent = 'Drive sync on';
       }
     });
-    tokenClient.requestAccessToken();
+    // if promptUser is false, try silent first (no popup)
+    tokenClient.requestAccessToken({ prompt: promptUser ? 'consent' : '' });
   };
   document.head.appendChild(script);
 }
@@ -961,6 +1002,43 @@ function switchView(name, btn) {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 document.getElementById('client-id-input').value = CLIENT_ID;
 toggleJobField();
+
+// Auto-login if we have a stored valid token
+(async function autoLogin() {
+  const stored = loadStoredToken();
+  if (stored && CLIENT_ID) {
+    accessToken = stored;
+    useGoogle = true;
+    setSyncState('syncing', 'loading...');
+    try {
+      await loadFromDrive();
+      launchApp('Google Drive');
+      document.getElementById('topbar-user').textContent = 'Drive sync on';
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.onload = () => {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: async (resp) => {
+            if (!resp.error) {
+              accessToken = resp.access_token;
+              storeToken(accessToken);
+              scheduleTokenRefresh();
+            }
+          }
+        });
+        scheduleTokenRefresh();
+      };
+      document.head.appendChild(script);
+    } catch(e) {
+      clearStoredToken();
+      accessToken = null;
+      useGoogle = false;
+      setSyncState('ok', 'local');
+    }
+  }
+})();
 </script>
 </body>
 </html>
