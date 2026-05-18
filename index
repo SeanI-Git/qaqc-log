@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="QA Log">
+<title>QA/QC Work Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f14;
+  --surface: #1a1a24;
+  --surface2: #22222f;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #e8e8f0;
+  --text2: #8888a0;
+  --text3: #55556a;
+  --accent: #4f9cf9;
+  --accent-dim: rgba(79,156,249,0.12);
+  --warn: #f4a94a;
+  --warn-dim: rgba(244,169,74,0.12);
+  --danger: #f46a6a;
+  --danger-dim: rgba(244,106,106,0.12);
+  --success: #4fca8a;
+  --success-dim: rgba(79,202,138,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --pink: #f472b6;
+  --pink-dim: rgba(244,114,182,0.12);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* AUTH SCREEN */
+#auth-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 2rem;
+}
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 2.5rem; max-width: 420px; width: 100%;
+  text-align: center;
+}
+.auth-logo {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em;
+  color: var(--text2); margin-bottom: 2rem; text-transform: uppercase;
+}
+.auth-title { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.5rem; }
+.auth-sub { font-size: 0.875rem; color: var(--text2); margin-bottom: 2rem; line-height: 1.6; }
+.auth-input-group { text-align: left; margin-bottom: 1rem; }
+.auth-input-group label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 6px; font-family: var(--mono); }
+.auth-input-group input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 0.8rem; }
+.auth-input-group input:focus { outline: none; border-color: var(--accent); }
+.btn-google {
+  width: 100%; padding: 12px; border-radius: var(--radius); border: 1px solid var(--border2);
+  background: var(--accent-dim); color: var(--accent); font-family: var(--sans); font-size: 0.9rem;
+  font-weight: 500; cursor: pointer; margin-bottom: 0.75rem; transition: background 0.15s;
+}
+.btn-google:hover { background: rgba(79,156,249,0.2); }
+.btn-local {
+  width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: none; color: var(--text2); font-family: var(--sans); font-size: 0.85rem;
+  cursor: pointer; transition: color 0.15s;
+}
+.btn-local:hover { color: var(--text); border-color: var(--border2); }
+.setup-link { margin-top: 1.5rem; font-size: 0.75rem; color: var(--text3); line-height: 1.7; }
+.setup-link a { color: var(--accent); text-decoration: none; }
+
+/* LAYOUT */
+#app { display: none; min-height: 100vh; }
+.topbar {
+  height: 52px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 1.25rem; gap: 1rem; position: sticky; top: 0; z-index: 100;
+}
+.topbar-logo { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--text2); text-transform: uppercase; white-space: nowrap; }
+.topbar-date { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.topbar-spacer { flex: 1; }
+.sync-indicator { font-family: var(--mono); font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.sync-dot.syncing { background: var(--warn); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.topbar-user { font-size: 0.75rem; color: var(--text2); }
+
+/* NAV */
+.nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; }
+.nav-btn {
+  padding: 0 1.25rem; height: 44px; background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text2); font-family: var(--sans); font-size: 0.8rem; font-weight: 500;
+  cursor: pointer; white-space: nowrap; transition: color 0.15s; letter-spacing: 0.03em;
+}
+.nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-btn:hover:not(.active) { color: var(--text); }
+
+/* MAIN */
+.main { padding: 1.5rem; max-width: 820px; margin: 0 auto; }
+
+/* CARDS */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem;
+}
+.card-header { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3); margin-bottom: 1rem; }
+
+/* FORMS */
+label { font-size: 0.75rem; color: var(--text2); display: block; margin-bottom: 5px; font-family: var(--mono); letter-spacing: 0.05em; }
+input[type=text], select, textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 9px 11px; color: var(--text);
+  font-family: var(--sans); font-size: 0.875rem; transition: border-color 0.15s;
+}
+input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+select { cursor: pointer; }
+select option { background: var(--surface2); }
+textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.field { margin-bottom: 1rem; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+
+/* BUTTONS */
+.btn {
+  padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border2);
+  font-family: var(--sans); font-size: 0.825rem; font-weight: 500; cursor: pointer;
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--accent); color: #0a0a14; border-color: var(--accent); }
+.btn-primary:hover { background: #6aabff; }
+.btn-outline { background: none; color: var(--text); }
+.btn-outline:hover { background: var(--surface2); }
+.btn-danger-sm { background: none; border: 1px solid rgba(244,106,106,0.3); color: var(--danger); font-size: 0.75rem; padding: 4px 10px; }
+.btn-danger-sm:hover { background: var(--danger-dim); }
+.btn-success-sm { background: none; border: 1px solid rgba(79,202,138,0.3); color: var(--success); font-size: 0.75rem; padding: 4px 10px; }
+.btn-icon { padding: 6px 8px; background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); cursor: pointer; font-size: 0.75rem; }
+.btn-icon:hover { color: var(--text); background: var(--surface2); }
+
+/* TAGS */
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-family: var(--mono); padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+.tag-obs { background: var(--warn-dim); color: var(--warn); }
+.tag-task { background: var(--accent-dim); color: var(--accent); }
+.tag-idea { background: var(--purple-dim); color: var(--purple); }
+.tag-print { background: var(--pink-dim); color: var(--pink); }
+.tag-meeting { background: var(--success-dim); color: var(--success); }
+.tag-other { background: rgba(255,255,255,0.05); color: var(--text2); }
+.tag-job { background: rgba(255,255,255,0.05); color: var(--text3); border: 1px solid var(--border); }
+
+/* NOTE ITEMS */
+.note-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.note-item:last-child { border-bottom: none; }
+.note-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.note-time { font-family: var(--mono); font-size: 0.7rem; color: var(--text3); }
+.note-text { font-size: 0.875rem; color: var(--text); line-height: 1.6; }
+.note-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+/* CHECKLIST */
+.todo-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.todo-item:last-child { border-bottom: none; }
+.todo-cb { width: 16px; height: 16px; border: 1px solid var(--border2); border-radius: 3px; background: var(--bg); cursor: pointer; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.todo-cb.checked { background: var(--success); border-color: var(--success); }
+.todo-cb.checked::after { content: '✓'; font-size: 10px; color: #0a0a14; font-weight: 700; }
+.todo-label { font-size: 0.875rem; line-height: 1.5; flex: 1; }
+.todo-label.done { text-decoration: line-through; color: var(--text3); }
+
+/* STATS */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.stat-num { font-family: var(--mono); font-size: 1.5rem; font-weight: 500; color: var(--text); }
+.stat-lbl { font-size: 0.7rem; color: var(--text3); margin-top: 3px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* FILTER BAR */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+.chip { font-size: 0.75rem; font-family: var(--mono); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: none; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+.chip.active { background: var(--accent); color: #0a0a14; border-color: var(--accent); }
+.chip:hover:not(.active) { border-color: var(--text2); color: var(--text); }
+
+/* SECTION LABEL */
+.section-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* HISTORY */
+.day-block { margin-bottom: 2rem; }
+.day-header { font-family: var(--mono); font-size: 11px; color: var(--text2); padding: 8px 0; border-bottom: 1px solid var(--border); margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; }
+.summary-block { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; margin-top: 10px; font-size: 0.825rem; }
+.summary-row { margin-bottom: 6px; }
+.summary-row:last-child { margin-bottom: 0; }
+.summary-key { color: var(--text3); font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.summary-val { color: var(--text2); line-height: 1.5; white-space: pre-wrap; }
+
+/* EXPORT PANEL */
+.export-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.export-title { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; }
+.export-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 1rem; line-height: 1.5; }
+.job-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+.job-chip { font-family: var(--mono); font-size: 0.75rem; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border2); background: none; color: var(--text); cursor: pointer; transition: all 0.15s; }
+.job-chip.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* TOAST */
+#toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 16px; font-size: 0.825rem; color: var(--text); opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+#toast.show { opacity: 1; }
+
+/* EMPTY */
+.empty { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 0.875rem; }
+.empty-icon { font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.3; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .main { padding: 1rem; }
+  .row2, .row3 { grid-template-columns: 1fr; }
+  .topbar-date { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">QA/QC Work Log · v1.0</div>
+    <div class="auth-title">Sign in to continue</div>
+    <div class="auth-sub">Your data syncs to Google Drive so it's available on any device. Or use local storage on this device only.</div>
+    <div class="auth-input-group">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="client-id-input" placeholder="Paste your Client ID here..." />
+    </div>
+    <button class="btn-google" onclick="initGoogleAuth()">Sign in with Google</button>
+    <button class="btn-local" onclick="useLocalStorage()">Use local storage (this device only)</button>
+    <div class="setup-link">
+      Need a Client ID? <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a> → New Project → Enable Drive API → OAuth Credentials → Web Application.<br>
+      Add your hosted URL to "Authorized JavaScript origins".<br><br>
+      Your Client ID is saved in this browser after first setup.
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">QA/QC Log</div>
+    <div class="topbar-date" id="topbar-date"></div>
+    <div class="topbar-spacer"></div>
+    <div class="sync-indicator" id="sync-indicator">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">local</span>
+    </div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn-icon" onclick="showExportModal()" title="Export">&#8681; Export</button>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchView('capture', this)">Quick Capture</button>
+    <button class="nav-btn" onclick="switchView('todos', this)">To-Do Lists</button>
+    <button class="nav-btn" onclick="switchView('summary', this)">End-of-Day</button>
+    <button class="nav-btn" onclick="switchView('history', this)">Log History</button>
+    <button class="nav-btn" onclick="switchView('export', this)">Export</button>
+  </div>
+
+  <div class="main">
+
+    <!-- QUICK CAPTURE -->
+    <div id="view-capture" class="view-panel">
+      <div class="card">
+        <div class="card-header">New entry</div>
+        <div class="row2">
+          <div>
+            <label>Bucket</label>
+            <select id="nc-bucket" onchange="toggleJobField()">
+              <option value="job">Job record (QC / skid-specific)</option>
+              <option value="personal">Personal log (general / daily)</option>
+            </select>
+          </div>
+          <div id="nc-job-wrap">
+            <label>Job / skid #</label>
+            <input type="text" id="nc-job" placeholder="e.g. SK-1042" list="job-datalist">
+            <datalist id="job-datalist"></datalist>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Category</label>
+            <select id="nc-cat">
+              <option value="obs">Observation / wiring issue</option>
+              <option value="task">Task / to-do</option>
+              <option value="idea">Idea / improvement</option>
+              <option value="print">3D print request</option>
+              <option value="meeting">Meeting / discussion</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Priority</label>
+            <select id="nc-priority">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <textarea id="nc-text" placeholder="What did you observe, find, think of, or need to do?" rows="3"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="btn btn-primary" onclick="addNote()">+ Add entry</button>
+        </div>
+      </div>
+
+      <div class="section-label">Today's entries</div>
+      <div id="today-list"></div>
+    </div>
+
+    <!-- TO-DOS -->
+    <div id="view-todos" class="view-panel" style="display:none;">
+      <div class="row2">
+        <div>
+          <div class="section-label">Job to-dos</div>
+          <div class="card">
+            <div class="field">
+              <label>Job / skid #</label>
+              <input type="text" id="todo-job" placeholder="e.g. SK-1042" list="job-datalist2">
+              <datalist id="job-datalist2"></datalist>
+            </div>
+            <div class="field">
+              <input type="text" id="todo-job-text" placeholder="To-do item..." style="margin-bottom:0;">
+            </div>
+            <button class="btn btn-outline" style="width:100%; margin-top:8px; justify-content:center;" onclick="addTodo('job')">+ Add job to-do</button>
+          </div>
+          <div id="job-todos-list"></div>
+        </div>
+        <div>
+          <div class="section-label">General to-dos</div>
+          <div class="card">
+            <div class="field">
+              <label>Category</label>
+              <select id="todo-gen-cat">
+                <option value="task">General task</option>
+                <option value="print">3D print</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <input type="text" id="todo-gen-text" placeholder="To-do item..." style="margin-bottom:0;">
+            </div>
+            <button class="btn btn-outline" style="width:100%; margin-top:8px; justify-content:center;" onclick="addTodo('general')">+ Add general to-do</button>
+          </div>
+          <div id="general-todos-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- END OF DAY SUMMARY -->
+    <div id="view-summary" class="view-panel" style="display:none;">
+      <div class="card">
+        <div class="card-header">End-of-day summary · <span id="summary-date-label"></span></div>
+        <div class="field">
+          <label>What I completed today</label>
+          <textarea id="sum-completed" rows="4" placeholder="Skid checkouts finished, panels QC'd, photos uploaded..." oninput="autoSave()"></textarea>
+        </div>
+        <div class="field">
+          <label>Issues / observations to follow up</label>
+          <textarea id="sum-issues" rows="3" placeholder="Open wiring discrepancies, things waiting on others..." oninput="autoSave()"></textarea>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Tomorrow's priorities</label>
+            <textarea id="sum-tomorrow" rows="3" placeholder="First thing tomorrow..." oninput="autoSave()"></textarea>
+          </div>
+          <div>
+            <label>Team / coordination notes</label>
+            <textarea id="sum-team" rows="3" placeholder="Status shared with co-workers, electrician hand-offs..." oninput="autoSave()"></textarea>
+          </div>
+        </div>
+        <div class="field">
+          <label>Ideas / process improvements / training gaps noticed</label>
+          <textarea id="sum-ideas" rows="3" placeholder="Recurring mistakes, things to add to training list..." oninput="autoSave()"></textarea>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+          <span id="autosave-label" style="font-size:0.75rem; color:var(--text3); font-family:var(--mono);"></span>
+          <button class="btn btn-primary" onclick="saveSummary()">Save summary</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="view-history" class="view-panel" style="display:none;">
+      <div class="stat-grid" id="stats-grid"></div>
+      <div class="filter-bar">
+        <span style="font-size:0.75rem; color:var(--text3); font-family:var(--mono);">filter:</span>
+        <button class="chip active" onclick="setFilter('all',this)">All</button>
+        <button class="chip" onclick="setFilter('obs',this)">Observations</button>
+        <button class="chip" onclick="setFilter('task',this)">Tasks</button>
+        <button class="chip" onclick="setFilter('idea',this)">Ideas</button>
+        <button class="chip" onclick="setFilter('print',this)">3D prints</button>
+        <button class="chip" onclick="setFilter('meeting',this)">Meetings</button>
+        <button class="chip" onclick="setFilter('job',this)">Job records</button>
+        <button class="chip" onclick="setFilter('personal',this)">Personal</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- EXPORT -->
+    <div id="view-export" class="view-panel" style="display:none;">
+      <div class="section-label">Export by job number</div>
+      <div class="export-panel">
+        <div class="export-title">Job record export</div>
+        <div class="export-sub">Select a job number to export all associated notes, wiring observations, and to-dos as an Excel workbook with separate sheets by category. Ready to drop into the job folder on your server.</div>
+        <label style="margin-bottom:8px;">Select job</label>
+        <div class="job-list" id="export-job-list"></div>
+        <input type="text" id="export-job-manual" placeholder="Or type a job number manually..." style="margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="exportJobXLSX()">&#8681; Export job record (.xlsx)</button>
+      </div>
+
+      <div class="section-label" style="margin-top:1.5rem;">Full log export</div>
+      <div class="export-panel">
+        <div class="export-title">Complete log export</div>
+        <div class="export-sub">Export everything — all notes, summaries, and to-dos — across all dates and jobs.</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="exportFullXLSX()">&#8681; Export full log (.xlsx)</button>
+          <button class="btn btn-outline" onclick="exportJSON()">&#8681; Export raw data (.json)</button>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:1.5rem;">Import / backup</div>
+      <div class="export-panel">
+        <div class="export-title">Restore from backup</div>
+        <div class="export-sub">Import a previously exported .json backup file to restore your data.</div>
+        <input type="file" id="import-file" accept=".json" onchange="importJSON(this)" style="font-size:0.825rem; color:var(--text2);">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME = 'qaqc-log-data.json';
+const TOKEN_STORAGE_KEY = 'qaqc_gtoken';
+const TOKEN_EXPIRY_KEY = 'qaqc_gtoken_expiry';
+let CLIENT_ID = localStorage.getItem('qaqc_client_id') || '';
+let tokenClient = null;
+let accessToken = null;
+let driveFileId = null;
+let useGoogle = false;
+let saveTimer = null;
+let syncTimer = null;
+let tokenRefreshTimer = null;
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+let db = { notes: [], todos: [], summaries: {}, lastSync: null };
+
+function loadLocal() {
+  try { db = JSON.parse(localStorage.getItem('qaqc_db') || JSON.stringify(db)); } catch {}
+}
+function saveLocal() {
+  localStorage.setItem('qaqc_db', JSON.stringify(db));
+}
+
+// ─── GOOGLE DRIVE ─────────────────────────────────────────────────────────────
+function storeToken(token) {
+  const expiry = Date.now() + 55 * 60 * 1000; // store for 55 min (token lasts 60)
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+}
+
+function loadStoredToken() {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const expiry = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0');
+  if (token && Date.now() < expiry) return token;
+  return null;
+}
+
+function clearStoredToken() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+function scheduleTokenRefresh() {
+  clearTimeout(tokenRefreshTimer);
+  // silently refresh token 5 minutes before expiry
+  tokenRefreshTimer = setTimeout(() => {
+    if (tokenClient) {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  }, 50 * 60 * 1000);
+}
+
+function initGoogleAuth() {
+  const cid = document.getElementById('client-id-input').value.trim();
+  if (!cid) { alert('Please paste your Google OAuth Client ID first.'); return; }
+  CLIENT_ID = cid;
+  localStorage.setItem('qaqc_client_id', cid);
+  loadGoogleScript(true);
+}
+
+function loadGoogleScript(promptUser) {
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.onload = () => {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) {
+          clearStoredToken();
+          showToast('Auth error: ' + resp.error);
+          return;
+        }
+        accessToken = resp.access_token;
+        storeToken(accessToken);
+        scheduleTokenRefresh();
+        useGoogle = true;
+        await loadFromDrive();
+        launchApp('Google Drive');
+        document.getElementById('topbar-user').textContent = 'Drive sync on';
+      }
+    });
+    // if promptUser is false, try silent first (no popup)
+    tokenClient.requestAccessToken({ prompt: promptUser ? 'consent' : '' });
+  };
+  document.head.appendChild(script);
+}
+
+async function loadFromDrive() {
+  setSyncState('syncing', 'loading...');
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=name='${DRIVE_FILE_NAME}'`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      driveFileId = data.files[0].id;
+      const content = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      db = await content.json();
+      saveLocal();
+    }
+    setSyncState('ok', 'Drive');
+  } catch(e) {
+    setSyncState('error', 'error');
+    showToast('Could not load from Drive — using local data.');
+    loadLocal();
+  }
+}
+
+async function saveToDrive() {
+  if (!useGoogle || !accessToken) { saveLocal(); return; }
+  setSyncState('syncing', 'saving...');
+  try {
+    const blob = new Blob([JSON.stringify(db)], { type: 'application/json' });
+    const form = new FormData();
+    const meta = { name: DRIVE_FILE_NAME, parents: driveFileId ? undefined : ['appDataFolder'] };
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', blob);
+    const method = driveFileId ? 'PATCH' : 'POST';
+    const url = driveFileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const res = await fetch(url, { method, headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+    const result = await res.json();
+    if (!driveFileId) driveFileId = result.id;
+    saveLocal();
+    setSyncState('ok', 'Drive');
+  } catch(e) {
+    setSyncState('error', 'sync err');
+    saveLocal();
+  }
+}
+
+function persistData() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { saveToDrive(); }, 1500);
+}
+
+function setSyncState(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+  lbl.textContent = label;
+}
+
+// ─── LOCAL ONLY ───────────────────────────────────────────────────────────────
+function useLocalStorage() {
+  loadLocal();
+  useGoogle = false;
+  launchApp('Local');
+  setSyncState('ok', 'local');
+}
+
+// ─── APP LAUNCH ───────────────────────────────────────────────────────────────
+function launchApp(mode) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbar-date').textContent = fmtDate(getToday());
+  document.getElementById('summary-date-label').textContent = fmtDate(getToday());
+  loadTodaySummary();
+  renderTodayList();
+  renderTodoLists();
+  refreshJobDatalist();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function getToday() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+const catLabel = { obs:'Observation', task:'Task', idea:'Idea', print:'3D print', meeting:'Meeting', other:'Other' };
+const catClass = { obs:'tag-obs', task:'tag-task', idea:'tag-idea', print:'tag-print', meeting:'tag-meeting', other:'tag-other' };
+const prioColor = { high:'var(--danger)', normal:'var(--text3)', low:'var(--text3)' };
+
+function tagHtml(cat) {
+  return `<span class="tag ${catClass[cat] || 'tag-other'}">${catLabel[cat] || cat}</span>`;
+}
+
+// ─── NOTES ────────────────────────────────────────────────────────────────────
+function toggleJobField() {
+  const bucket = document.getElementById('nc-bucket').value;
+  document.getElementById('nc-job-wrap').style.opacity = bucket === 'job' ? '1' : '0.4';
+}
+
+function addNote() {
+  const text = document.getElementById('nc-text').value.trim();
+  if (!text) { showToast('Please enter a note.'); return; }
+  const note = {
+    id: Date.now(),
+    date: getToday(),
+    ts: Date.now(),
+    bucket: document.getElementById('nc-bucket').value,
+    cat: document.getElementById('nc-cat').value,
+    job: document.getElementById('nc-job').value.trim().toUpperCase(),
+    priority: document.getElementById('nc-priority').value,
+    text
+  };
+  db.notes.push(note);
+  persistData();
+  document.getElementById('nc-text').value = '';
+  renderTodayList();
+  refreshJobDatalist();
+  showToast('Entry added.');
+}
+
+function deleteNote(id) {
+  if (!confirm('Remove this entry?')) return;
+  db.notes = db.notes.filter(n => n.id !== id);
+  persistData();
+  renderTodayList();
+}
+
+function renderTodayList() {
+  const today = getToday();
+  const notes = db.notes.filter(n => n.date === today).slice().reverse();
+  const el = document.getElementById('today-list');
+  if (!notes.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>No entries yet today.</div>';
+    return;
+  }
+  el.innerHTML = notes.map(n => `
+    <div class="card" style="padding:12px 14px; margin-bottom:8px;">
+      <div class="note-meta">
+        ${tagHtml(n.cat)}
+        ${n.bucket === 'job' ? `<span class="tag tag-job">JOB</span>` : ''}
+        ${n.job ? `<span class="tag" style="background:var(--accent-dim);color:var(--accent);">${esc(n.job)}</span>` : ''}
+        <span class="note-time">${fmtTime(n.ts)}</span>
+        ${n.priority === 'high' ? '<span style="font-size:0.7rem;color:var(--danger);font-family:var(--mono);">HIGH</span>' : ''}
+      </div>
+      <div class="note-text" style="margin-top:6px;">${esc(n.text)}</div>
+      <div class="note-actions">
+        <button class="btn btn-danger-sm" onclick="deleteNote(${n.id})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── TO-DOS ───────────────────────────────────────────────────────────────────
+function addTodo(type) {
+  if (type === 'job') {
+    const job = document.getElementById('todo-job').value.trim().toUpperCase();
+    const text = document.getElementById('todo-job-text').value.trim();
+    if (!text) { showToast('Enter a to-do item.'); return; }
+    db.todos.push({ id: Date.now(), type: 'job', job, text, done: false, created: getToday() });
+    document.getElementById('todo-job-text').value = '';
+    refreshJobDatalist();
+  } else {
+    const text = document.getElementById('todo-gen-text').value.trim();
+    const cat = document.getElementById('todo-gen-cat').value;
+    if (!text) { showToast('Enter a to-do item.'); return; }
+    db.todos.push({ id: Date.now(), type: 'general', cat, text, done: false, created: getToday() });
+    document.getElementById('todo-gen-text').value = '';
+  }
+  persistData();
+  renderTodoLists();
+  showToast('To-do added.');
+}
+
+function toggleTodo(id) {
+  const t = db.todos.find(t => t.id === id);
+  if (t) { t.done = !t.done; t.doneAt = t.done ? Date.now() : null; }
+  persistData();
+  renderTodoLists();
+}
+
+function deleteTodo(id) {
+  db.todos = db.todos.filter(t => t.id !== id);
+  persistData();
+  renderTodoLists();
+}
+
+function renderTodoLists() {
+  const jobTodos = db.todos.filter(t => t.type === 'job');
+  const genTodos = db.todos.filter(t => t.type === 'general');
+
+  const jobEl = document.getElementById('job-todos-list');
+  if (!jobTodos.length) {
+    jobEl.innerHTML = '<div class="empty" style="padding:1.5rem;">No job to-dos.</div>';
+  } else {
+    const byJob = {};
+    jobTodos.forEach(t => { if (!byJob[t.job || 'No job']) byJob[t.job || 'No job'] = []; byJob[t.job || 'No job'].push(t); });
+    jobEl.innerHTML = Object.entries(byJob).map(([job, todos]) => `
+      <div class="card" style="margin-bottom:8px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:8px;">${esc(job)}</div>
+        ${todos.map(t => todoItemHtml(t)).join('')}
+      </div>
+    `).join('');
+  }
+
+  const genEl = document.getElementById('general-todos-list');
+  if (!genTodos.length) {
+    genEl.innerHTML = '<div class="empty" style="padding:1.5rem;">No general to-dos.</div>';
+  } else {
+    genEl.innerHTML = `<div class="card">${genTodos.map(t => todoItemHtml(t)).join('')}</div>`;
+  }
+}
+
+function todoItemHtml(t) {
+  return `
+    <div class="todo-item">
+      <div class="todo-cb ${t.done ? 'checked' : ''}" onclick="toggleTodo(${t.id})"></div>
+      <div class="todo-label ${t.done ? 'done' : ''}">${esc(t.text)}</div>
+      <button class="btn btn-danger-sm" onclick="deleteTodo(${t.id})" style="flex-shrink:0;">✕</button>
+    </div>
+  `;
+}
+
+// ─── SUMMARY ──────────────────────────────────────────────────────────────────
+function loadTodaySummary() {
+  const s = db.summaries[getToday()] || {};
+  document.getElementById('sum-completed').value = s.completed || '';
+  document.getElementById('sum-issues').value = s.issues || '';
+  document.getElementById('sum-tomorrow').value = s.tomorrow || '';
+  document.getElementById('sum-team').value = s.team || '';
+  document.getElementById('sum-ideas').value = s.ideas || '';
+}
+
+function autoSave() {
+  clearTimeout(saveTimer);
+  document.getElementById('autosave-label').textContent = 'unsaved...';
+  saveTimer = setTimeout(saveSummary, 1200);
+}
+
+function saveSummary() {
+  db.summaries[getToday()] = {
+    completed: document.getElementById('sum-completed').value,
+    issues: document.getElementById('sum-issues').value,
+    tomorrow: document.getElementById('sum-tomorrow').value,
+    team: document.getElementById('sum-team').value,
+    ideas: document.getElementById('sum-ideas').value,
+    savedAt: Date.now()
+  };
+  persistData();
+  document.getElementById('autosave-label').textContent = 'saved ✓';
+  setTimeout(() => { document.getElementById('autosave-label').textContent = ''; }, 2000);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+let activeFilter = 'all';
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderHistory();
+}
+
+function renderStats() {
+  const today = getToday();
+  const todayN = db.notes.filter(n => n.date === today).length;
+  const totalObs = db.notes.filter(n => n.cat === 'obs').length;
+  const openTodos = db.todos.filter(t => !t.done).length;
+  const days = new Set(db.notes.map(n => n.date)).size;
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${todayN}</div><div class="stat-lbl">Today</div></div>
+    <div class="stat-card"><div class="stat-num">${totalObs}</div><div class="stat-lbl">Observations</div></div>
+    <div class="stat-card"><div class="stat-num">${openTodos}</div><div class="stat-lbl">Open to-dos</div></div>
+    <div class="stat-card"><div class="stat-num">${days}</div><div class="stat-lbl">Days logged</div></div>
+  `;
+}
+
+function renderHistory() {
+  renderStats();
+  let notes = [...db.notes];
+  if (activeFilter === 'job') notes = notes.filter(n => n.bucket === 'job');
+  else if (activeFilter === 'personal') notes = notes.filter(n => n.bucket === 'personal');
+  else if (activeFilter !== 'all') notes = notes.filter(n => n.cat === activeFilter);
+
+  const byDate = {};
+  notes.forEach(n => { if (!byDate[n.date]) byDate[n.date] = []; byDate[n.date].push(n); });
+  const dates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+
+  const el = document.getElementById('history-list');
+  if (!dates.length) { el.innerHTML = '<div class="empty">Nothing to show.</div>'; return; }
+
+  el.innerHTML = dates.map(date => {
+    const dayNotes = byDate[date].slice().reverse();
+    const s = db.summaries[date];
+    const notesHtml = dayNotes.map(n => `
+      <div class="note-item">
+        <div class="note-meta">
+          ${tagHtml(n.cat)}
+          ${n.bucket === 'job' ? '<span class="tag tag-job" style="font-size:0.65rem;">JOB</span>' : ''}
+          ${n.job ? `<span class="tag" style="background:var(--accent-dim);color:var(--accent);font-size:0.65rem;">${esc(n.job)}</span>` : ''}
+          <span class="note-time">${fmtTime(n.ts)}</span>
+        </div>
+        <div class="note-text">${esc(n.text)}</div>
+      </div>
+    `).join('');
+    const sumHtml = s ? `
+      <div class="summary-block">
+        ${s.completed ? `<div class="summary-row"><div class="summary-key">Completed</div><div class="summary-val">${esc(s.completed)}</div></div>` : ''}
+        ${s.issues ? `<div class="summary-row"><div class="summary-key">Issues</div><div class="summary-val">${esc(s.issues)}</div></div>` : ''}
+        ${s.tomorrow ? `<div class="summary-row"><div class="summary-key">Tomorrow</div><div class="summary-val">${esc(s.tomorrow)}</div></div>` : ''}
+        ${s.ideas ? `<div class="summary-row"><div class="summary-key">Ideas / gaps</div><div class="summary-val">${esc(s.ideas)}</div></div>` : ''}
+      </div>` : '';
+    return `
+      <div class="day-block">
+        <div class="day-header"><span>${fmtDate(date)}</span><span style="color:var(--text3);font-size:10px;">${dayNotes.length} entries</span></div>
+        ${notesHtml}
+        ${sumHtml}
+      </div>`;
+  }).join('');
+}
+
+// ─── JOB DATALIST ─────────────────────────────────────────────────────────────
+function refreshJobDatalist() {
+  const jobs = [...new Set([
+    ...db.notes.filter(n => n.job).map(n => n.job),
+    ...db.todos.filter(t => t.job).map(t => t.job)
+  ])].sort();
+  ['job-datalist','job-datalist2'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (dl) dl.innerHTML = jobs.map(j => `<option value="${esc(j)}">`).join('');
+  });
+  const el = document.getElementById('export-job-list');
+  if (el) el.innerHTML = jobs.map(j => `
+    <button class="job-chip" onclick="selectExportJob('${esc(j)}', this)">${esc(j)}</button>
+  `).join('');
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+let selectedExportJob = null;
+function selectExportJob(job, el) {
+  selectedExportJob = job;
+  document.querySelectorAll('.job-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('export-job-manual').value = job;
+}
+
+function exportJobXLSX() {
+  const job = (document.getElementById('export-job-manual').value.trim() || selectedExportJob || '').toUpperCase();
+  if (!job) { showToast('Select or enter a job number first.'); return; }
+
+  const notes = db.notes.filter(n => n.job === job || (n.bucket === 'job' && n.job === job));
+  const todos = db.todos.filter(t => t.job === job);
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Wiring observations
+  const obs = notes.filter(n => n.cat === 'obs').map(n => ({
+    Date: n.date, Time: fmtTime(n.ts), Observation: n.text, Priority: n.priority || 'normal'
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(obs.length ? obs : [{ Note: 'No observations recorded' }]), 'Wiring Observations');
+
+  // Sheet 2: All observations
+  const allNotes = notes.map(n => ({
+    Date: n.date, Time: fmtTime(n.ts), Category: catLabel[n.cat] || n.cat, Note: n.text, Priority: n.priority || 'normal'
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allNotes.length ? allNotes : [{ Note: 'No notes recorded' }]), 'All Notes');
+
+  // Sheet 3: Open to-dos
+  const openTodos = todos.filter(t => !t.done).map(t => ({ Task: t.text, Status: 'Open', Created: t.created }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(openTodos.length ? openTodos : [{ Note: 'No open to-dos' }]), 'Open To-Dos');
+
+  // Sheet 4: Completed to-dos
+  const doneTodos = todos.filter(t => t.done).map(t => ({ Task: t.text, Status: 'Complete', Created: t.created, Completed: t.doneAt ? fmtTime(t.doneAt) : '' }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(doneTodos.length ? doneTodos : [{ Note: 'No completed to-dos' }]), 'Completed To-Dos');
+
+  // Sheet 5: Ideas from summaries
+  const ideas = Object.entries(db.summaries)
+    .filter(([,s]) => s.ideas)
+    .map(([date, s]) => ({ Date: date, Ideas: s.ideas }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ideas.length ? ideas : [{ Note: 'No ideas recorded' }]), 'Ideas & Training Gaps');
+
+  XLSX.writeFile(wb, `QC-Record-${job}-${getToday()}.xlsx`);
+  showToast(`Exported QC record for ${job}`);
+}
+
+function exportFullXLSX() {
+  const wb = XLSX.utils.book_new();
+  const allNotes = db.notes.map(n => ({
+    Date: n.date, Time: fmtTime(n.ts), Bucket: n.bucket, Category: catLabel[n.cat] || n.cat,
+    Job: n.job || '', Note: n.text, Priority: n.priority || 'normal'
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allNotes), 'All Notes');
+
+  const allTodos = db.todos.map(t => ({
+    Type: t.type, Job: t.job || '', Task: t.text,
+    Status: t.done ? 'Complete' : 'Open', Created: t.created
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allTodos), 'All To-Dos');
+
+  const sumRows = Object.entries(db.summaries).map(([date, s]) => ({
+    Date: date, Completed: s.completed || '', Issues: s.issues || '',
+    Tomorrow: s.tomorrow || '', Team: s.team || '', Ideas: s.ideas || ''
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sumRows), 'Daily Summaries');
+  XLSX.writeFile(wb, `QAQC-Full-Log-${getToday()}.xlsx`);
+  showToast('Full log exported.');
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `qaqc-backup-${getToday()}.json`;
+  a.click();
+  showToast('JSON backup exported.');
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.notes) { showToast('Invalid file.'); return; }
+      if (!confirm(`Import ${imported.notes.length} notes and ${imported.todos.length} to-dos? This will merge with your existing data.`)) return;
+      const existingIds = new Set(db.notes.map(n => n.id));
+      imported.notes.forEach(n => { if (!existingIds.has(n.id)) db.notes.push(n); });
+      const existingTodoIds = new Set(db.todos.map(t => t.id));
+      imported.todos.forEach(t => { if (!existingTodoIds.has(t.id)) db.todos.push(t); });
+      Object.assign(db.summaries, imported.summaries || {});
+      persistData();
+      renderTodayList();
+      renderTodoLists();
+      refreshJobDatalist();
+      showToast('Data imported successfully.');
+    } catch { showToast('Could not read file.'); }
+  };
+  r.readAsText(file);
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function switchView(name, btn) {
+  document.querySelectorAll('.view-panel').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).style.display = 'block';
+  btn.classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'export') refreshJobDatalist();
+  if (name === 'todos') renderTodoLists();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('client-id-input').value = CLIENT_ID;
+toggleJobField();
+
+// Auto-login if we have a stored valid token
+(async function autoLogin() {
+  const stored = loadStoredToken();
+  if (stored && CLIENT_ID) {
+    accessToken = stored;
+    useGoogle = true;
+    setSyncState('syncing', 'loading...');
+    try {
+      await loadFromDrive();
+      launchApp('Google Drive');
+      document.getElementById('topbar-user').textContent = 'Drive sync on';
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.onload = () => {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: async (resp) => {
+            if (!resp.error) {
+              accessToken = resp.access_token;
+              storeToken(accessToken);
+              scheduleTokenRefresh();
+            }
+          }
+        });
+        scheduleTokenRefresh();
+      };
+      document.head.appendChild(script);
+    } catch(e) {
+      clearStoredToken();
+      accessToken = null;
+      useGoogle = false;
+      setSyncState('ok', 'local');
+    }
+  }
+})();
+</script>
+</body>
+</html>
